@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#090d12" />
+    <meta
+      name="description"
+      content="基于运动医学证据的 Three.js 三维人体指标标注图谱"
+    />
+    <title>运动损伤风险解剖图谱</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three.module.js"
+        }
+      }
+    </script>
+    <script src="./vendor/lucide.min.js" defer></script>
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="anatomy-stage" aria-labelledby="page-title">
+        <header class="stage-header">
+          <div class="brand-lockup">
+            <span class="brand-mark" aria-hidden="true">
+              <i data-lucide="activity"></i>
+            </span>
+            <div>
+              <p class="eyebrow">SPORTS MEDICINE · EVIDENCE ATLAS</p>
+              <h1 id="page-title">运动损伤风险解剖图谱</h1>
+            </div>
+          </div>
+          <div class="evidence-status" aria-label="资料状态">
+            <span><b id="indicator-total">20</b> 项指标</span>
+            <span><b id="source-total">17</b> 篇来源</span>
+          </div>
+        </header>
+
+        <div class="selection-readout" aria-live="polite">
+          <p id="selected-category">FMS 筛查</p>
+          <h2 id="selected-title">深蹲</h2>
+          <div class="mapping-legend">
+            <span><i class="legend-dot primary"></i><b>主要</b><span id="primary-readout">双侧髋、膝、踝、肩与胸椎</span></span>
+            <span><i class="legend-dot secondary"></i><b>次要</b><span id="secondary-readout">核心、骨盆和足部控制</span></span>
+          </div>
+        </div>
+
+        <div id="anatomy-canvas" class="anatomy-canvas">
+          <div id="model-loading" class="model-loading" style="--load-progress: 0%">
+            <i></i>
+            <span id="model-loading-text">加载解剖模型 0%</span>
+          </div>
+          <div id="anatomy-tooltip" class="anatomy-tooltip" role="tooltip" hidden></div>
+          <div class="orientation-axis" aria-hidden="true">
+            <span>前</span>
+            <i></i>
+          </div>
+        </div>
+
+        <div class="model-toolbar" aria-label="三维人体控制">
+          <div class="segmented-control" role="group" aria-label="解剖层级">
+            <button class="segment active" type="button" data-layer="all" aria-pressed="true">综合</button>
+            <button class="segment" type="button" data-layer="muscle" aria-pressed="false">肌肉</button>
+            <button class="segment" type="button" data-layer="skeleton" aria-pressed="false">骨骼</button>
+          </div>
+          <div class="icon-controls">
+            <button class="icon-button" id="zoom-in" type="button" title="放大" aria-label="放大">
+              <i data-lucide="zoom-in"></i>
+            </button>
+            <button class="icon-button" id="zoom-out" type="button" title="缩小" aria-label="缩小">
+              <i data-lucide="zoom-out"></i>
+            </button>
+            <button class="icon-button active" id="auto-rotate" type="button" title="自动旋转" aria-label="自动旋转" aria-pressed="true">
+              <i data-lucide="rotate-3d"></i>
+            </button>
+            <button class="icon-button" id="reset-view" type="button" title="复位视角" aria-label="复位视角">
+              <i data-lucide="scan"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="indicator-panel" aria-label="监测指标与文献证据">
+        <div class="panel-topbar">
+          <div>
+            <p class="eyebrow">MONITORING INDEX</p>
+            <h2>指标与证据</h2>
+          </div>
+          <a class="icon-button" href="./evidence-notes.md" title="打开证据文档" aria-label="打开证据文档">
+            <i data-lucide="book-open-text"></i>
+          </a>
+        </div>
+
+        <label class="search-box" for="indicator-search">
+          <i data-lucide="search"></i>
+          <input id="indicator-search" type="search" placeholder="搜索指标或部位" aria-label="搜索指标或部位" autocomplete="off" />
+          <kbd id="result-count">20</kbd>
+        </label>
+
+        <nav id="category-tabs" class="category-tabs" aria-label="指标分类"></nav>
+
+        <section class="indicator-browser" aria-labelledby="indicator-browser-title">
+          <div class="section-heading">
+            <h3 id="indicator-browser-title">指标列表</h3>
+            <span id="active-filter-label">全部指标</span>
+          </div>
+          <div id="indicator-list" class="indicator-list" role="listbox" aria-label="指标列表"></div>
+          <p id="empty-state" class="empty-state" hidden>没有匹配的指标</p>
+        </section>
+
+        <article class="evidence-detail" aria-labelledby="detail-title">
+          <div class="detail-heading">
+            <div>
+              <span id="detail-index">FMS · 01</span>
+              <h2 id="detail-title">深蹲</h2>
+            </div>
+            <span id="evidence-grade" class="evidence-grade">动作定义明确</span>
+          </div>
+
+          <div id="site-selector-wrap" class="site-selector-wrap" hidden>
+            <label for="site-selector">TMG 肌肉测点</label>
+            <select id="site-selector"></select>
+          </div>
+
+          <dl class="threshold-grid">
+            <div>
+              <dt>单位 / 范围</dt>
+              <dd id="detail-range">0-3 分</dd>
+            </div>
+            <div>
+              <dt>Excel 达标值</dt>
+              <dd id="detail-target">3 分</dd>
+            </div>
+            <div>
+              <dt>Excel 危险值</dt>
+              <dd id="detail-risk">0 或 1 分</dd>
+            </div>
+          </dl>
+
+          <section class="detail-section">
+            <h3>测量含义</h3>
+            <p id="detail-summary"></p>
+          </section>
+
+          <section class="detail-section anatomy-mapping">
+            <h3>解剖标注</h3>
+            <div>
+              <span class="mapping-label primary">主要</span>
+              <p id="detail-primary"></p>
+            </div>
+            <div>
+              <span class="mapping-label secondary">次要</span>
+              <p id="detail-secondary"></p>
+            </div>
+          </section>
+
+          <section class="detail-section evidence-correction">
+            <div class="evidence-label">
+              <i data-lucide="shield-check"></i>
+              <h3>文献判断</h3>
+            </div>
+            <p id="detail-evidence"></p>
+          </section>
+
+          <section class="detail-section source-section">
+            <h3>依据来源</h3>
+            <div id="source-list" class="source-list"></div>
+          </section>
+        </article>
+
+        <footer class="panel-footer">
+          <div class="usage-notice">
+            <i data-lucide="triangle-alert"></i>
+            <p>筛查结果用于定位后续评估方向，不能单独用于医学诊断或个体损伤预测。</p>
+          </div>
+          <a href="./ATTRIBUTION.md" title="查看模型来源与许可证">
+            <i data-lucide="badge-info"></i>
+            <span>模型来源与许可证</span>
+          </a>
+        </footer>
+      </aside>
+    </main>
+  </body>
+</html>
