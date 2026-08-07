@@ -374,7 +374,7 @@ export class AnatomyScene {
         resolve,
         (event) => {
           if (!event.total) return;
-          this.progress[progressKey] = event.loaded / event.total;
+          this.progress[progressKey] = Math.min(1, event.loaded / event.total);
           this.updateLoadingProgress();
         },
         reject,
@@ -405,7 +405,7 @@ export class AnatomyScene {
   }
 
   updateLoadingProgress() {
-    const value = Math.round((this.progress.anatomy * 0.72 + this.progress.skeleton * 0.28) * 100);
+    const value = Math.min(100, Math.round((this.progress.anatomy * 0.72 + this.progress.skeleton * 0.28) * 100));
     this.loadingElement.style.setProperty("--load-progress", `${value}%`);
     this.loadingText.textContent = `加载解剖模型 ${value}%`;
   }
