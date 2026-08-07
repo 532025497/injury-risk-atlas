@@ -4,6 +4,8 @@ Three.js 单页应用。20 项指标来自用户提供的 Excel；右侧显示�
 
 在线访问：https://532025497.github.io/injury-risk-atlas/
 
+手机版：https://532025497.github.io/injury-risk-atlas/mobile/
+
 ## 本地运行
 
 在本目录启动任意静态文件服务器，例如：
@@ -19,6 +21,7 @@ Three.js、OrbitControls 和 Lucide 均已放在 `vendor/`，页面运行时不�
 ## 文件
 
 - `index.html`：页面结构
+- `mobile/`：独立的手机竖屏/横屏界面
 - `styles.css`：桌面与移动端样式
 - `app.js`：筛选、搜索、指标选择和界面更新
 - `anatomy.js`：Three.js 分层人体与部位标注

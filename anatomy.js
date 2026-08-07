@@ -238,6 +238,7 @@ export class AnatomyScene {
     this.targetGoal = null;
     this.layerMode = "all";
     this.compactMode = null;
+    this.shortMode = false;
     this.ready = false;
     this.progress = { anatomy: 0, skeleton: 0 };
 
@@ -383,10 +384,12 @@ export class AnatomyScene {
 
   async loadModels() {
     const loader = new GLTFLoader();
+    const anatomyUrl = new URL("./assets/anatomy.glb", import.meta.url);
+    const skeletonUrl = new URL("./assets/skeleton.glb", import.meta.url);
     try {
       const [anatomy, skeleton] = await Promise.all([
-        this.loadGLB(loader, "./assets/anatomy.glb", "anatomy"),
-        this.loadGLB(loader, "./assets/skeleton.glb", "skeleton"),
+        this.loadGLB(loader, anatomyUrl.href, "anatomy"),
+        this.loadGLB(loader, skeletonUrl.href, "skeleton"),
       ]);
       this.installModels(anatomy.scene, skeleton.scene);
       this.updateQaMetadata();
@@ -546,7 +549,7 @@ export class AnatomyScene {
     }
     if (!found) return;
     const center = box.getCenter(new THREE.Vector3());
-    center.x *= 0.18;
+    center.x = this.shortMode ? -0.58 : center.x * 0.18;
     center.z = 0;
     center.y = THREE.MathUtils.clamp(center.y, 2.3, 5.1);
     this.targetGoal = center;
@@ -555,7 +558,7 @@ export class AnatomyScene {
   resetView() {
     const distance = this.compactMode ? 16.5 : 13.1;
     this.cameraGoal = new THREE.Vector3(0.15, 3.25, distance);
-    this.targetGoal = new THREE.Vector3(0, 3.2, 0);
+    this.targetGoal = new THREE.Vector3(this.shortMode ? -0.58 : 0, 3.2, 0);
     this.controls.autoRotate = false;
   }
 
@@ -598,16 +601,20 @@ export class AnatomyScene {
     const width = Math.max(1, this.container.clientWidth);
     const height = Math.max(1, this.container.clientHeight);
     const aspect = width / height;
-    const compact = aspect < 0.82;
+    const short = height < 320;
+    const shortChanged = short !== this.shortMode;
+    const compact = aspect < 0.82 || short;
+    this.shortMode = short;
     this.camera.aspect = aspect;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
 
-    if (compact !== this.compactMode) {
+    if (compact !== this.compactMode || shortChanged) {
       this.compactMode = compact;
       this.controls.maxDistance = compact ? 19 : 14;
       const direction = new THREE.Vector3().subVectors(this.camera.position, this.controls.target).normalize();
       this.camera.position.copy(this.controls.target).add(direction.multiplyScalar(compact ? 16.5 : 13.1));
+      this.controls.target.x = short ? -0.58 : 0;
     }
   }
 

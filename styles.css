@@ -423,6 +423,12 @@ select:focus-visible {
   letter-spacing: 0;
 }
 
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
 .search-box {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr) auto;
