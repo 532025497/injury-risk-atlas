@@ -60,6 +60,123 @@ const SECONDARY_MATERIAL = new THREE.MeshStandardMaterial({
   metalness: 0.01,
   side: THREE.DoubleSide,
 });
+const SKIN_BASE_COLOR = new THREE.Color("#b77967");
+const SKIN_SHORTS_COLOR = new THREE.Color("#27323a");
+const SKIN_PRIMARY_COLOR = new THREE.Color("#ff4056");
+const SKIN_SECONDARY_COLOR = new THREE.Color("#ff9965");
+const SKIN_MATERIAL = new THREE.MeshStandardMaterial({
+  color: "#ffffff",
+  roughness: 0.76,
+  metalness: 0,
+  vertexColors: true,
+  side: THREE.DoubleSide,
+});
+const SHORTS_MATERIAL = new THREE.MeshStandardMaterial({
+  color: "#202b33",
+  roughness: 0.82,
+  metalness: 0.01,
+  side: THREE.DoubleSide,
+});
+
+function smooth01(value) {
+  const clamped = THREE.MathUtils.clamp(value, 0, 1);
+  return clamped * clamped * (3 - 2 * clamped);
+}
+
+function rangeWeight(value, min, max, feather = 25) {
+  return smooth01((value - min) / feather) * smooth01((max - value) / feather);
+}
+
+function centerWeight(value, max, feather = 25) {
+  return smooth01((max - Math.abs(value)) / feather);
+}
+
+function sideWeight(x, side) {
+  const sidedX = side === "l" ? x : -x;
+  return smooth01((sidedX + 5) / 35);
+}
+
+function regionWeight(key, x, y, z) {
+  const side = key.endsWith("_l") ? "l" : key.endsWith("_r") ? "r" : null;
+  const sided = side ? sideWeight(x, side) : 1;
+  const lateral = Math.abs(x);
+  const front = smooth01((-y - 45) / 85);
+  const back = smooth01((y + 95) / 90);
+  const center = centerWeight(lateral, 175, 40);
+
+  switch (key) {
+    case "brain":
+      return rangeWeight(z, 1480, 1650, 30) * centerWeight(lateral, 115, 30);
+    case "eyes":
+      return rangeWeight(z, 1510, 1600, 24) * centerWeight(lateral, 95, 25) * front;
+    case "heart":
+      return rangeWeight(x, -10, 105, 35) * rangeWeight(z, 1135, 1310, 45) * front;
+    case "neck":
+      return rangeWeight(z, 1360, 1495, 35) * centerWeight(lateral, 95, 30);
+    case "chest":
+      return rangeWeight(z, 1110, 1380, 55) * center * front;
+    case "thoracic_spine":
+      return rangeWeight(z, 1080, 1370, 55) * centerWeight(lateral, 105, 35) * back;
+    case "lumbar_spine":
+      return rangeWeight(z, 860, 1130, 50) * centerWeight(lateral, 95, 30) * back;
+    case "core_front":
+      return rangeWeight(z, 840, 1160, 55) * center * front;
+    case "core_back":
+      return rangeWeight(z, 840, 1160, 55) * center * back;
+    case "pelvis":
+      return rangeWeight(z, 730, 950, 45) * centerWeight(lateral, 175, 40);
+    case "shoulder_l":
+    case "shoulder_r":
+      return sided * rangeWeight(lateral, 105, 250, 40) * rangeWeight(z, 1210, 1405, 45);
+    case "scapula_l":
+    case "scapula_r":
+      return sided * rangeWeight(lateral, 65, 215, 40) * rangeWeight(z, 1160, 1390, 50) * back;
+    case "upper_arm_l":
+    case "upper_arm_r":
+      return sided * rangeWeight(lateral, 155, 285, 35) * rangeWeight(z, 1010, 1300, 55);
+    case "forearm_l":
+    case "forearm_r":
+      return sided * rangeWeight(lateral, 190, 320, 35) * rangeWeight(z, 775, 1080, 55);
+    case "wrist_l":
+    case "wrist_r":
+      return sided * rangeWeight(lateral, 225, 335, 30) * rangeWeight(z, 690, 825, 35);
+    case "hand_l":
+    case "hand_r":
+      return sided * rangeWeight(lateral, 230, 350, 30) * rangeWeight(z, 545, 750, 45);
+    case "hip_l":
+    case "hip_r":
+      return sided * rangeWeight(lateral, 40, 185, 35) * rangeWeight(z, 700, 930, 45);
+    case "glute_l":
+    case "glute_r":
+      return sided * rangeWeight(lateral, 25, 175, 35) * rangeWeight(z, 690, 920, 45) * back;
+    case "adductor_l":
+    case "adductor_r":
+      return sided * rangeWeight(lateral, 20, 110, 30) * rangeWeight(z, 435, 800, 55);
+    case "quad_l":
+    case "quad_r":
+      return sided * rangeWeight(lateral, 38, 160, 35) * rangeWeight(z, 420, 810, 55) * front;
+    case "hamstring_l":
+    case "hamstring_r":
+      return sided * rangeWeight(lateral, 35, 160, 35) * rangeWeight(z, 420, 810, 55) * back;
+    case "knee_l":
+    case "knee_r":
+      return sided * rangeWeight(lateral, 35, 140, 30) * rangeWeight(z, 345, 500, 35);
+    case "calf_l":
+    case "calf_r":
+      return sided * rangeWeight(lateral, 25, 135, 30) * rangeWeight(z, 115, 405, 45) * back;
+    case "tibialis_l":
+    case "tibialis_r":
+      return sided * rangeWeight(lateral, 25, 135, 30) * rangeWeight(z, 115, 405, 45) * front;
+    case "ankle_l":
+    case "ankle_r":
+      return sided * rangeWeight(lateral, 20, 140, 30) * rangeWeight(z, 45, 155, 28);
+    case "foot_l":
+    case "foot_r":
+      return sided * rangeWeight(lateral, 15, 165, 35) * rangeWeight(z, -25, 105, 30);
+    default:
+      return 0;
+  }
+}
 
 function normalizedName(name = "") {
   return name.replaceAll("_", " ").replace(/\s+/g, " ").trim().toLowerCase();
@@ -225,6 +342,8 @@ export class AnatomyScene {
     this.loadingElement = container.querySelector("#model-loading");
     this.loadingText = container.querySelector("#model-loading-text");
     this.regionMeshes = new Map();
+    this.skinMeshes = [];
+    this.garmentMeshes = [];
     this.muscleMeshes = [];
     this.boneMeshes = [];
     this.markerMeshes = [];
@@ -236,11 +355,11 @@ export class AnatomyScene {
     this.clock = new THREE.Clock();
     this.cameraGoal = null;
     this.targetGoal = null;
-    this.layerMode = "all";
+    this.layerMode = "skin";
     this.compactMode = null;
     this.shortMode = false;
     this.ready = false;
-    this.progress = { anatomy: 0, skeleton: 0 };
+    this.progress = { skin: 0, anatomy: 0, skeleton: 0 };
 
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.FogExp2(0x091017, 0.046);
@@ -255,7 +374,7 @@ export class AnatomyScene {
     this.renderer.toneMappingExposure = 1.16;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.domElement.setAttribute("aria-label", "可旋转的真实肌肉与骨骼三维解剖模型");
+    this.renderer.domElement.setAttribute("aria-label", "可旋转的皮肤、肌肉与骨骼三维人体模型");
     container.prepend(this.renderer.domElement);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -384,14 +503,16 @@ export class AnatomyScene {
 
   async loadModels() {
     const loader = new GLTFLoader();
+    const skinUrl = new URL("./assets/skin.glb", import.meta.url);
     const anatomyUrl = new URL("./assets/anatomy.glb", import.meta.url);
     const skeletonUrl = new URL("./assets/skeleton.glb", import.meta.url);
     try {
-      const [anatomy, skeleton] = await Promise.all([
+      const [skin, anatomy, skeleton] = await Promise.all([
+        this.loadGLB(loader, skinUrl.href, "skin"),
         this.loadGLB(loader, anatomyUrl.href, "anatomy"),
         this.loadGLB(loader, skeletonUrl.href, "skeleton"),
       ]);
-      this.installModels(anatomy.scene, skeleton.scene);
+      this.installModels(skin.scene, anatomy.scene, skeleton.scene);
       this.updateQaMetadata();
       this.ready = true;
       this.loadingElement.hidden = true;
@@ -405,30 +526,61 @@ export class AnatomyScene {
   }
 
   updateLoadingProgress() {
-    const value = Math.min(100, Math.round((this.progress.anatomy * 0.72 + this.progress.skeleton * 0.28) * 100));
+    const value = Math.min(100, Math.round((this.progress.skin * 0.12 + this.progress.anatomy * 0.63 + this.progress.skeleton * 0.25) * 100));
     this.loadingElement.style.setProperty("--load-progress", `${value}%`);
     this.loadingText.textContent = `加载解剖模型 ${value}%`;
   }
 
-  installModels(anatomyRoot, skeletonRoot) {
+  installModels(skinRoot, anatomyRoot, skeletonRoot) {
+    skinRoot.rotation.x = -Math.PI / 2;
     anatomyRoot.rotation.x = -Math.PI / 2;
     skeletonRoot.rotation.x = -Math.PI / 2;
+    skinRoot.updateMatrixWorld(true);
     anatomyRoot.updateMatrixWorld(true);
     skeletonRoot.updateMatrixWorld(true);
 
     const sourceBox = new THREE.Box3().setFromObject(anatomyRoot);
     const sourceSize = sourceBox.getSize(new THREE.Vector3());
     const scale = 6.38 / sourceSize.y;
+    skinRoot.scale.setScalar(scale);
     anatomyRoot.scale.setScalar(scale);
     skeletonRoot.scale.setScalar(scale);
+    skinRoot.updateMatrixWorld(true);
     anatomyRoot.updateMatrixWorld(true);
     skeletonRoot.updateMatrixWorld(true);
 
     const scaledBox = new THREE.Box3().setFromObject(anatomyRoot);
     const center = scaledBox.getCenter(new THREE.Vector3());
     const offset = new THREE.Vector3(-center.x, 0.14 - scaledBox.min.y, -center.z);
+    skinRoot.position.add(offset);
     anatomyRoot.position.add(offset);
     skeletonRoot.position.add(offset);
+
+    skinRoot.traverse((child) => {
+      if (!child.isMesh) return;
+      child.geometry = child.geometry.clone();
+      child.geometry.computeVertexNormals();
+      child.geometry.normalizeNormals();
+      const name = normalizedName(child.name);
+      if (name.includes("athletic shorts")) {
+        child.material = SHORTS_MATERIAL;
+        child.castShadow = true;
+        child.receiveShadow = true;
+        child.renderOrder = 4;
+        child.userData.layer = "garment";
+        this.garmentMeshes.push(child);
+        return;
+      }
+      const positions = child.geometry.getAttribute("position");
+      child.geometry.setAttribute("color", new THREE.BufferAttribute(new Float32Array(positions.count * 3), 3));
+      child.material = SKIN_MATERIAL;
+      child.castShadow = true;
+      child.receiveShadow = true;
+      child.renderOrder = 3;
+      child.userData.layer = "skin";
+      child.userData.regionLabel = "皮肤体表";
+      this.skinMeshes.push(child);
+    });
 
     anatomyRoot.traverse((child) => {
       if (!child.isMesh) return;
@@ -457,7 +609,8 @@ export class AnatomyScene {
       this.boneMeshes.push(child);
     });
 
-    this.model.add(skeletonRoot, anatomyRoot);
+    this.model.add(skeletonRoot, anatomyRoot, skinRoot);
+    this.updateSkinHighlights();
     this.setLayerMode(this.layerMode);
   }
 
@@ -466,6 +619,9 @@ export class AnatomyScene {
     const emptyRegions = regionKeys.filter((key) => !(this.regionMeshes.get(key)?.length));
     this.container.dataset.muscleMeshCount = String(this.muscleMeshes.length);
     this.container.dataset.boneMeshCount = String(this.boneMeshes.length);
+    this.container.dataset.skinMeshCount = String(this.skinMeshes.length);
+    this.container.dataset.skinVertexCount = String(this.skinMeshes.reduce((total, mesh) => total + mesh.geometry.getAttribute("position").count, 0));
+    this.container.dataset.garmentMeshCount = String(this.garmentMeshes.length);
     this.container.dataset.registeredRegionCount = String(this.regionMeshes.size);
     this.container.dataset.emptyRegions = emptyRegions.join(",");
   }
@@ -517,12 +673,53 @@ export class AnatomyScene {
         mesh.renderOrder = mesh.userData.layer === "bone" ? 1 : 2;
       }
     }
+    this.updateSkinHighlights();
     this.applyLayerOpacity();
   }
 
+  updateSkinHighlights() {
+    const primaryKeys = [...this.activePrimary];
+    const secondaryKeys = [...this.activeSecondary];
+    const color = new THREE.Color();
+
+    for (const mesh of this.skinMeshes) {
+      const positions = mesh.geometry.getAttribute("position");
+      const colors = mesh.geometry.getAttribute("color");
+      for (let index = 0; index < positions.count; index += 1) {
+        const x = positions.getX(index);
+        const y = positions.getY(index);
+        const z = positions.getZ(index);
+        let primaryWeight = 0;
+        let secondaryWeight = 0;
+        for (const key of primaryKeys) primaryWeight = Math.max(primaryWeight, regionWeight(key, x, y, z));
+        for (const key of secondaryKeys) secondaryWeight = Math.max(secondaryWeight, regionWeight(key, x, y, z));
+
+        const shortsWeight = rangeWeight(z, 610, 900, 38) * centerWeight(x, 195, 42);
+        color.copy(SKIN_BASE_COLOR).lerp(SKIN_SHORTS_COLOR, smooth01(shortsWeight) * 0.96);
+        if (primaryWeight > 0.01) {
+          color.lerp(SKIN_PRIMARY_COLOR, smooth01(primaryWeight) * 0.88);
+        } else if (secondaryWeight > 0.01) {
+          color.lerp(SKIN_SECONDARY_COLOR, smooth01(secondaryWeight) * 0.72);
+        }
+        colors.setXYZ(index, color.r, color.g, color.b);
+      }
+      colors.needsUpdate = true;
+    }
+  }
+
   applyLayerOpacity() {
+    const skinMode = this.layerMode === "skin";
     const muscleOpacity = this.layerMode === "skeleton" ? 0.1 : 1;
-    const boneOpacity = this.layerMode === "skeleton" ? 0.96 : this.layerMode === "muscle" ? 0.035 : 0.14;
+    const boneOpacity = this.layerMode === "skeleton" ? 0.96 : 0.035;
+
+    for (const mesh of this.skinMeshes) mesh.visible = skinMode;
+    for (const mesh of this.garmentMeshes) mesh.visible = skinMode;
+    for (const mesh of this.muscleMeshes) mesh.visible = !skinMode;
+    for (const mesh of this.boneMeshes) mesh.visible = !skinMode;
+    for (const mesh of this.markerMeshes) {
+      const keys = mesh.userData.regionKeys ?? [];
+      mesh.visible = !skinMode && keys.some((key) => this.activePrimary.has(key) || this.activeSecondary.has(key));
+    }
 
     for (const material of materialCache.values()) setOpacity(material, muscleOpacity);
     setOpacity(BONE_MATERIAL, boneOpacity);
@@ -580,12 +777,32 @@ export class AnatomyScene {
     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hit = this.raycaster.intersectObjects(this.raycastMeshes, false)[0];
-    if (!hit?.object?.userData?.regionKeys?.length) {
+    const targets = this.layerMode === "skin" ? this.skinMeshes : this.raycastMeshes;
+    const hit = this.raycaster.intersectObjects(targets, false)[0];
+    if (!hit) {
       this.hideTooltip();
       return;
     }
-    this.tooltip.textContent = hit.object.userData.regionLabel;
+    if (this.layerMode === "skin") {
+      const point = hit.object.worldToLocal(hit.point.clone());
+      const candidates = [...this.activePrimary, ...this.activeSecondary];
+      let region = null;
+      let weight = 0;
+      for (const key of candidates) {
+        const candidateWeight = regionWeight(key, point.x, point.y, point.z);
+        if (candidateWeight > weight) {
+          region = key;
+          weight = candidateWeight;
+        }
+      }
+      this.tooltip.textContent = weight > 0.08 ? BODY_REGION_LABELS[region] : "皮肤体表";
+    } else {
+      if (!hit.object.userData.regionKeys?.length) {
+        this.hideTooltip();
+        return;
+      }
+      this.tooltip.textContent = hit.object.userData.regionLabel;
+    }
     this.tooltip.style.left = `${event.clientX - rect.left + 14}px`;
     this.tooltip.style.top = `${event.clientY - rect.top + 14}px`;
     this.tooltip.hidden = false;

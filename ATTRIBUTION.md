@@ -8,7 +8,12 @@ This project includes modified and decimated anatomical meshes distributed by
 - Creator: The Database Center for Life Science (DBCLS), Japan
 - Source: [BodyParts3D / Anatomography](https://lifesciencedb.jp/bp3d/)
 - License: [Creative Commons Attribution-ShareAlike 2.1 Japan](https://creativecommons.org/licenses/by-sa/2.1/jp/deed.en)
-- Use here: muscular, tendinous, connective-tissue and skeletal meshes
+- Use here: complete skin surface (FMA7163), muscular, tendinous,
+  connective-tissue and skeletal meshes
+
+The skin source mesh was obtained from the
+[BodyParts3D GitHub mirror](https://github.com/Kevin-Mattheus-Moerman/BodyParts3D),
+then decimated and converted to GLB for browser delivery.
 
 ## Z-Anatomy
 

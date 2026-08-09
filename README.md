@@ -1,6 +1,6 @@
 # 运动损伤风险解剖图谱
 
-Three.js 单页应用。20 项指标来自用户提供的 Excel；右侧显示原表阈值、文献修正、解剖映射和来源，左侧以三维人体同步标注主要与次要部位。
+Three.js 单页应用。20 项指标来自用户提供的 Excel；右侧显示原表阈值、文献修正、解剖映射和来源，左侧以带皮肤体表的三维人体同步标注主要与次要部位，并可切换肌肉和骨骼层。
 
 在线访问：https://532025497.github.io/injury-risk-atlas/
 
@@ -25,6 +25,7 @@ Three.js、OrbitControls 和 Lucide 均已放在 `vendor/`，页面运行时不�
 - `styles.css`：桌面与移动端样式
 - `app.js`：筛选、搜索、指标选择和界面更新
 - `anatomy.js`：Three.js 分层人体与部位标注
+- `assets/skin.glb`：BodyParts3D 完整皮肤体表网格（FMA7163）
 - `assets/anatomy.glb`：467 个肌肉、肌腱与结缔组织网格
 - `assets/skeleton.glb`：201 个骨骼网格
 - `data.js`：20 项指标、解剖映射和来源数据
