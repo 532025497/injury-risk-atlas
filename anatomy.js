@@ -61,7 +61,6 @@ const SECONDARY_MATERIAL = new THREE.MeshStandardMaterial({
   side: THREE.DoubleSide,
 });
 const SKIN_BASE_COLOR = new THREE.Color("#b77967");
-const SKIN_SHORTS_COLOR = new THREE.Color("#27323a");
 const SKIN_PRIMARY_COLOR = new THREE.Color("#ff4056");
 const SKIN_SECONDARY_COLOR = new THREE.Color("#ff9965");
 const SKIN_MATERIAL = new THREE.MeshStandardMaterial({
@@ -69,12 +68,6 @@ const SKIN_MATERIAL = new THREE.MeshStandardMaterial({
   roughness: 0.76,
   metalness: 0,
   vertexColors: true,
-  side: THREE.DoubleSide,
-});
-const SHORTS_MATERIAL = new THREE.MeshStandardMaterial({
-  color: "#202b33",
-  roughness: 0.82,
-  metalness: 0.01,
   side: THREE.DoubleSide,
 });
 
@@ -89,6 +82,31 @@ function rangeWeight(value, min, max, feather = 25) {
 
 function centerWeight(value, max, feather = 25) {
   return smooth01((max - Math.abs(value)) / feather);
+}
+
+function neutralizeIntimateAnatomy(geometry) {
+  const positions = geometry.getAttribute("position");
+  if (!positions) return;
+
+  for (let index = 0; index < positions.count; index += 1) {
+    const x = positions.getX(index);
+    const y = positions.getY(index);
+    const z = positions.getZ(index);
+    const targetY = -150 - (z - 700) * 0.16;
+    if (y >= targetY) continue;
+
+    const vertical = rangeWeight(z, 670, 825, 25);
+    const medial = centerWeight(x, 62, 18);
+    const projection = smooth01((targetY - y) / 25);
+    const weight = vertical * medial * projection;
+    if (weight > 0) positions.setY(index, THREE.MathUtils.lerp(y, targetY, weight));
+  }
+
+  positions.needsUpdate = true;
+  geometry.computeVertexNormals();
+  geometry.normalizeNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
 }
 
 function sideWeight(x, side) {
@@ -343,7 +361,6 @@ export class AnatomyScene {
     this.loadingText = container.querySelector("#model-loading-text");
     this.regionMeshes = new Map();
     this.skinMeshes = [];
-    this.garmentMeshes = [];
     this.muscleMeshes = [];
     this.boneMeshes = [];
     this.markerMeshes = [];
@@ -558,19 +575,13 @@ export class AnatomyScene {
 
     skinRoot.traverse((child) => {
       if (!child.isMesh) return;
-      child.geometry = child.geometry.clone();
-      child.geometry.computeVertexNormals();
-      child.geometry.normalizeNormals();
       const name = normalizedName(child.name);
       if (name.includes("athletic shorts")) {
-        child.material = SHORTS_MATERIAL;
-        child.castShadow = true;
-        child.receiveShadow = true;
-        child.renderOrder = 4;
-        child.userData.layer = "garment";
-        this.garmentMeshes.push(child);
+        child.visible = false;
         return;
       }
+      child.geometry = child.geometry.clone();
+      neutralizeIntimateAnatomy(child.geometry);
       const positions = child.geometry.getAttribute("position");
       child.geometry.setAttribute("color", new THREE.BufferAttribute(new Float32Array(positions.count * 3), 3));
       child.material = SKIN_MATERIAL;
@@ -621,7 +632,7 @@ export class AnatomyScene {
     this.container.dataset.boneMeshCount = String(this.boneMeshes.length);
     this.container.dataset.skinMeshCount = String(this.skinMeshes.length);
     this.container.dataset.skinVertexCount = String(this.skinMeshes.reduce((total, mesh) => total + mesh.geometry.getAttribute("position").count, 0));
-    this.container.dataset.garmentMeshCount = String(this.garmentMeshes.length);
+    this.container.dataset.garmentMeshCount = "0";
     this.container.dataset.registeredRegionCount = String(this.regionMeshes.size);
     this.container.dataset.emptyRegions = emptyRegions.join(",");
   }
@@ -694,8 +705,7 @@ export class AnatomyScene {
         for (const key of primaryKeys) primaryWeight = Math.max(primaryWeight, regionWeight(key, x, y, z));
         for (const key of secondaryKeys) secondaryWeight = Math.max(secondaryWeight, regionWeight(key, x, y, z));
 
-        const shortsWeight = rangeWeight(z, 610, 900, 38) * centerWeight(x, 195, 42);
-        color.copy(SKIN_BASE_COLOR).lerp(SKIN_SHORTS_COLOR, smooth01(shortsWeight) * 0.96);
+        color.copy(SKIN_BASE_COLOR);
         if (primaryWeight > 0.01) {
           color.lerp(SKIN_PRIMARY_COLOR, smooth01(primaryWeight) * 0.88);
         } else if (secondaryWeight > 0.01) {
@@ -713,7 +723,6 @@ export class AnatomyScene {
     const boneOpacity = this.layerMode === "skeleton" ? 0.96 : 0.035;
 
     for (const mesh of this.skinMeshes) mesh.visible = skinMode;
-    for (const mesh of this.garmentMeshes) mesh.visible = skinMode;
     for (const mesh of this.muscleMeshes) mesh.visible = !skinMode;
     for (const mesh of this.boneMeshes) mesh.visible = !skinMode;
     for (const mesh of this.markerMeshes) {
